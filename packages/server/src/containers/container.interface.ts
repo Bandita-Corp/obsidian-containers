@@ -1,0 +1,111 @@
+import {
+  ContainerType,
+  ContainerSummaryDto,
+  FolderTreeNode,
+  FileItemDto,
+  SyncDiffRequestDto,
+  SyncDiffResponseDto,
+  SyncPushRequestDto,
+  SyncPushResponseDto,
+  SyncPullRequestDto,
+  SyncPullResponseDto,
+  SyncStatusDto,
+  ContainerChangesResponseDto,
+} from '@workspace/shared';
+
+/**
+ * Base interface representing an isolated storage container (vault).
+ */
+export interface IContainer {
+  readonly id: string;
+  readonly name: string;
+  readonly type: ContainerType;
+  readonly description?: string;
+  readonly rootPath: string;
+
+  /**
+   * Initializes any storage requirements (directories, configs).
+   */
+  initialize(): Promise<void>;
+
+  /**
+   * Returns a high-level summary of the container.
+   */
+  getSummary(): Promise<ContainerSummaryDto>;
+
+  /**
+   * Builds the complete hierarchical file and directory tree.
+   */
+  getTree(): Promise<FolderTreeNode>;
+
+  /**
+   * Reads a single file from the container, including parsed metadata.
+   */
+  readFile(relativePath: string): Promise<FileItemDto>;
+
+  /**
+   * Writes/updates a file inside the container.
+   */
+  writeFile(relativePath: string, content: string): Promise<void>;
+
+  /**
+   * Deletes a file from the container.
+   */
+  deleteFile(relativePath: string): Promise<void>;
+
+  /**
+   * Lists all files with their content and parsed metadata.
+   */
+  listAllFiles(): Promise<FileItemDto[]>;
+
+  /**
+   * Creates a directory folder inside the container.
+   */
+  createFolder?(folderPath: string): Promise<void>;
+
+  /**
+   * Deletes a directory folder inside the container.
+   */
+  deleteFolder?(folderPath: string): Promise<void>;
+
+  /**
+   * Renames or moves a file/folder inside the container.
+   */
+  renamePath?(oldPath: string, newPath: string): Promise<void>;
+
+  /**
+   * Computes a diff between client changes and container files.
+   */
+  diff(dto: SyncDiffRequestDto): Promise<SyncDiffResponseDto>;
+
+  /**
+   * Pushes client modifications and persists them into the container.
+   */
+  push(dto: SyncPushRequestDto): Promise<SyncPushResponseDto>;
+
+  /**
+   * Pulls incremental changes or full container state.
+   */
+  pull(dto: SyncPullRequestDto): Promise<SyncPullResponseDto>;
+
+  /**
+   * Calculates and returns all changes and tag metadata since a previous pull/sync.
+   */
+  getChangesSince(sinceRef?: string): Promise<ContainerChangesResponseDto>;
+
+  /**
+   * Returns container status and storage statistics.
+   */
+  getStatus(): Promise<SyncStatusDto>;
+}
+
+/**
+ * Git-specific extension methods for containers backed by Git versioning.
+ */
+export interface IGitContainerExtension {
+  diff(dto: SyncDiffRequestDto): Promise<SyncDiffResponseDto>;
+  push(dto: SyncPushRequestDto): Promise<SyncPushResponseDto>;
+  pull(dto: SyncPullRequestDto): Promise<SyncPullResponseDto>;
+  getChangesSince(sinceCommit?: string): Promise<ContainerChangesResponseDto>;
+  getStatus(): Promise<SyncStatusDto>;
+}

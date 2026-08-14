@@ -1,0 +1,31 @@
+{
+  "name": "custom-obsidian-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo for Custom Obsidian Workspace and Git-backed Sync Server",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build:shared && npm run build:server && npm run build:plugin",
+    "dev:server": "npm run start:dev --workspace=@workspace/server",
+    "dev:plugin": "npm run dev --workspace=@workspace/obsidian-plugin",
+    "build:server": "npm run build --workspace=@workspace/server",
+    "build:plugin": "npm run build --workspace=@workspace/obsidian-plugin",
+    "build:shared": "npm run build --workspace=@workspace/shared",
+    "docker:up": "docker-compose up -d --build",
+    "docker:down": "docker-compose down"
+  },
+  "keywords": [
+    "obsidian",
+    "sync",
+    "nest",
+    "git",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

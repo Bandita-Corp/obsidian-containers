@@ -1,0 +1,21 @@
+services:
+  sync-server:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    container_name: obsidian-sync-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - VAULT_STORAGE_PATH=/app/data/vault
+      - GIT_USER_NAME=Obsidian Sync Engine
+      - GIT_USER_EMAIL=sync@obsidian.local
+    volumes:
+      - sync_data:/app/data
+
+volumes:
+  sync_data:
+    driver: local

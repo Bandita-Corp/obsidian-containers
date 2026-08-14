@@ -1,0 +1,21 @@
+{
+  "name": "@workspace/obsidian-plugin",
+  "version": "1.0.0",
+  "description": "Custom Obsidian Workspace & Git Sync Client Plugin",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production"
+  },
+  "dependencies": {
+    "@workspace/shared": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.20.2",
+    "obsidian": "latest",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.5"
+  }
+}

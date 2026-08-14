@@ -1,0 +1,10 @@
+{
+  "id": "custom-workspace-sync",
+  "name": "Custom Workspace Sync",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Customized Obsidian environment with Git-backed Sync Server integration and streamlined workspace controls.",
+  "author": "Senior Full-Stack Developer",
+  "authorUrl": "",
+  "isDesktopOnly": true
+}

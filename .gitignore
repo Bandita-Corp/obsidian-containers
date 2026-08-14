@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Plugin distribution in vault (if copied directly)
+main.js
+manifest.json.dev
+!packages/obsidian-plugin/styles.css
+
+# Local storage and git data
+data/
+*.log
+
+# Obsidian specific test vaults
+.obsidian/
+test-vault/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
