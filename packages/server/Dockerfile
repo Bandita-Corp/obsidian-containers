@@ -11,6 +11,7 @@ COPY package.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/server/package.json ./packages/server/
 COPY packages/obsidian-plugin/package.json ./packages/obsidian-plugin/
+COPY packages/web/package.json ./packages/web/
 COPY tsconfig.base.json ./
 
 # Install monorepo dependencies
@@ -19,9 +20,11 @@ RUN npm install
 # Copy source codes
 COPY packages/shared ./packages/shared
 COPY packages/server ./packages/server
+COPY packages/web ./packages/web
 
-# Build shared package then server package
+# Build shared package, web app, and server package
 RUN npm run build:shared
+RUN npm run build:web
 RUN npm run build:server
 
 # Production runtime stage
@@ -43,12 +46,14 @@ COPY package.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/server/package.json ./packages/server/
 COPY packages/obsidian-plugin/package.json ./packages/obsidian-plugin/
+COPY packages/web/package.json ./packages/web/
 
 RUN npm install --omit=dev
 
 # Copy built artifacts from builder stage
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/packages/server/dist ./packages/server/dist
+COPY --from=builder /app/packages/web/dist ./packages/web/dist
 
 # Create storage directory for Git repository
 RUN mkdir -p /app/data/vault

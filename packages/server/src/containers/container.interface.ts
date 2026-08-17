@@ -11,6 +11,10 @@ import {
   SyncPullResponseDto,
   SyncStatusDto,
   ContainerChangesResponseDto,
+  CommitSummaryDto,
+  CommitDetailDto,
+  FileVersionDto,
+  RestoreFileVersionRequestDto,
 } from '@workspace/shared';
 
 /**
@@ -97,6 +101,31 @@ export interface IContainer {
    * Returns container status and storage statistics.
    */
   getStatus(): Promise<SyncStatusDto>;
+
+  /**
+   * Time Machine: Returns commit history for the container.
+   */
+  getCommits?(limit?: number): Promise<CommitSummaryDto[]>;
+
+  /**
+   * Time Machine: Returns detailed diff and file patches for a specific commit.
+   */
+  getCommitDetail?(commitHash: string): Promise<CommitDetailDto>;
+
+  /**
+   * Time Machine: Returns commit history affecting a specific file.
+   */
+  getFileHistory?(filePath: string, limit?: number): Promise<CommitSummaryDto[]>;
+
+  /**
+   * Time Machine: Retrieves a snapshot of a file at a historical commit.
+   */
+  getFileAtCommit?(filePath: string, commitHash: string): Promise<FileVersionDto>;
+
+  /**
+   * Time Machine: Reverts / restores a file to a specific historical commit.
+   */
+  restoreFileVersion?(dto: RestoreFileVersionRequestDto): Promise<{ success: boolean; commit: string; message: string }>;
 }
 
 /**
@@ -108,4 +137,10 @@ export interface IGitContainerExtension {
   pull(dto: SyncPullRequestDto): Promise<SyncPullResponseDto>;
   getChangesSince(sinceCommit?: string): Promise<ContainerChangesResponseDto>;
   getStatus(): Promise<SyncStatusDto>;
+  getCommits(limit?: number): Promise<CommitSummaryDto[]>;
+  getCommitDetail(commitHash: string): Promise<CommitDetailDto>;
+  getFileHistory(filePath: string, limit?: number): Promise<CommitSummaryDto[]>;
+  getFileAtCommit(filePath: string, commitHash: string): Promise<FileVersionDto>;
+  restoreFileVersion(dto: RestoreFileVersionRequestDto): Promise<{ success: boolean; commit: string; message: string }>;
 }
+

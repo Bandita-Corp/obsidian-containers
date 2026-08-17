@@ -223,3 +223,63 @@ export interface SyncServerEventDto {
   author?: string;
   message?: string;
 }
+
+/**
+ * Summary information for a single Git commit in Time Machine.
+ */
+export interface CommitSummaryDto {
+  hash: string;
+  shortHash: string;
+  author: string;
+  authorEmail?: string;
+  date: string;
+  relativeDate?: string;
+  message: string;
+  body?: string;
+  filesChanged?: number;
+  insertions?: number;
+  deletions?: number;
+}
+
+/**
+ * Diff entry for a single file inside a commit.
+ */
+export interface CommitFileDiffDto {
+  path: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed' | 'copied' | 'unmodified';
+  patch?: string;
+  insertions?: number;
+  deletions?: number;
+}
+
+/**
+ * Detailed commit info including all file diffs and patches.
+ */
+export interface CommitDetailDto extends CommitSummaryDto {
+  files: CommitFileDiffDto[];
+}
+
+/**
+ * Snapshot of a file at a specific historical commit.
+ */
+export interface FileVersionDto {
+  commitHash: string;
+  shortHash: string;
+  path: string;
+  content: string;
+  author: string;
+  date: string;
+  message: string;
+  patch?: string;
+  metadata?: ParsedNoteMetadataDto;
+}
+
+/**
+ * Request payload for reverting or restoring a file to a specific commit version.
+ */
+export interface RestoreFileVersionRequestDto {
+  path: string;
+  commitHash: string;
+  message?: string;
+}
+

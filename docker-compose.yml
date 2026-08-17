@@ -16,6 +16,17 @@ services:
     volumes:
       - sync_data:/app/data
 
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+    container_name: obsidian-web-app
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - sync-server
+
 volumes:
   sync_data:
     driver: local

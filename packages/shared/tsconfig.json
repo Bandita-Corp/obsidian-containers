@@ -5,7 +5,8 @@
     "rootDir": "./src",
     "module": "CommonJS",
     "target": "ES2021",
-    "declaration": true
+    "declaration": true,
+    "baseUrl": "./"
   },
   "include": ["src/**/*"]
 }

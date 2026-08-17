@@ -22,6 +22,10 @@ import {
   SyncPullResponseDto,
   SyncStatusDto,
   ContainerChangesResponseDto,
+  CommitSummaryDto,
+  CommitDetailDto,
+  FileVersionDto,
+  RestoreFileVersionRequestDto,
 } from '@workspace/shared';
 
 @Controller('containers')
@@ -143,4 +147,76 @@ export class ContainersController {
     const container = this.containerManager.getContainer(id);
     return container.pull(body);
   }
+
+  // --- Time Machine REST Endpoints ---
+
+  @Get(':id/commits')
+  async getCommits(
+    @Param('id') id: string,
+    @Query('limit') limit?: string
+  ): Promise<CommitSummaryDto[]> {
+    const container = this.containerManager.getContainer(id);
+    if (!container.getCommits) return [];
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+    return container.getCommits(parsedLimit);
+  }
+
+  @Get(':id/commits/:commit')
+  async getCommitDetail(
+    @Param('id') id: string,
+    @Param('commit') commitHash: string
+  ): Promise<CommitDetailDto> {
+    const container = this.containerManager.getContainer(id);
+    if (!container.getCommitDetail) {
+      throw new BadRequestException('Commit details not supported for this container.');
+    }
+    return container.getCommitDetail(commitHash);
+  }
+
+  @Get(':id/file-history')
+  async getFileHistory(
+    @Param('id') id: string,
+    @Query('path') filePath: string,
+    @Query('limit') limit?: string
+  ): Promise<CommitSummaryDto[]> {
+    if (!filePath) {
+      throw new BadRequestException('Query parameter "path" is required.');
+    }
+    const container = this.containerManager.getContainer(id);
+    if (!container.getFileHistory) return [];
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+    return container.getFileHistory(filePath, parsedLimit);
+  }
+
+  @Get(':id/file-version')
+  async getFileVersion(
+    @Param('id') id: string,
+    @Query('path') filePath: string,
+    @Query('commit') commitHash: string
+  ): Promise<FileVersionDto> {
+    if (!filePath || !commitHash) {
+      throw new BadRequestException('Query parameters "path" and "commit" are required.');
+    }
+    const container = this.containerManager.getContainer(id);
+    if (!container.getFileAtCommit) {
+      throw new BadRequestException('Version history not supported for this container.');
+    }
+    return container.getFileAtCommit(filePath, commitHash);
+  }
+
+  @Post(':id/file-restore')
+  async restoreFileVersion(
+    @Param('id') id: string,
+    @Body() body: RestoreFileVersionRequestDto
+  ): Promise<{ success: boolean; commit: string; message: string }> {
+    if (!body.path || !body.commitHash) {
+      throw new BadRequestException('Fields "path" and "commitHash" are required.');
+    }
+    const container = this.containerManager.getContainer(id);
+    if (!container.restoreFileVersion) {
+      throw new BadRequestException('File restore not supported for this container.');
+    }
+    return container.restoreFileVersion(body);
+  }
 }
+

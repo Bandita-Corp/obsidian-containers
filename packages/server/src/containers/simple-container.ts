@@ -19,6 +19,10 @@ import {
   ContainerChangesResponseDto,
   ConflictStrategy,
   ParsedNoteMetadataDto,
+  CommitSummaryDto,
+  CommitDetailDto,
+  FileVersionDto,
+  RestoreFileVersionRequestDto,
 } from '@workspace/shared';
 import { IContainer } from './container.interface';
 import { NoteParserUtil } from './note-parser.util';
@@ -601,4 +605,48 @@ Enjoy your simplified Obsidian vault!
   private computeHash(content: string): string {
     return crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
   }
+
+  // --- Time Machine Fallbacks ---
+
+  async getCommits(limit = 50): Promise<CommitSummaryDto[]> {
+    return [];
+  }
+
+  async getCommitDetail(commitHash: string): Promise<CommitDetailDto> {
+    return {
+      hash: commitHash,
+      shortHash: commitHash.substring(0, 7),
+      author: 'System',
+      date: new Date().toISOString(),
+      message: 'Simple container snapshot',
+      files: [],
+    };
+  }
+
+  async getFileHistory(filePath: string, limit = 50): Promise<CommitSummaryDto[]> {
+    return [];
+  }
+
+  async getFileAtCommit(filePath: string, commitHash: string): Promise<FileVersionDto> {
+    const file = await this.readFile(filePath);
+    return {
+      commitHash,
+      shortHash: commitHash.substring(0, 7),
+      path: file.path,
+      content: file.content,
+      author: 'System',
+      date: new Date().toISOString(),
+      message: 'Current file state',
+      metadata: file.metadata,
+    };
+  }
+
+  async restoreFileVersion(dto: RestoreFileVersionRequestDto): Promise<{ success: boolean; commit: string; message: string }> {
+    return {
+      success: false,
+      commit: '',
+      message: 'Version restore is only supported on Git-backed containers.',
+    };
+  }
 }
+

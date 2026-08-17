@@ -19,6 +19,11 @@ import {
   ContainerChangesResponseDto,
   ConflictStrategy,
   ParsedNoteMetadataDto,
+  CommitSummaryDto,
+  CommitDetailDto,
+  CommitFileDiffDto,
+  FileVersionDto,
+  RestoreFileVersionRequestDto,
 } from '@workspace/shared';
 import { IContainer, IGitContainerExtension } from './container.interface';
 import { NoteParserUtil } from './note-parser.util';
@@ -606,4 +611,186 @@ This is a **Git Container** providing full revision tracking, change visualizati
     const normalized = path.normalize(filePath).replace(/^(\.\.(\/|\\|$))+/, '');
     return normalized.replace(/^[/\\]+/, '').replace(/\\/g, '/');
   }
+
+  // --- Time Machine Implementations ---
+
+  async getCommits(limit = 50): Promise<CommitSummaryDto[]> {
+    try {
+      const log = await this.git.log({ maxCount: limit });
+      return log.all.map((c) => ({
+        hash: c.hash,
+        shortHash: c.hash.substring(0, 7),
+        author: c.author_name,
+        authorEmail: c.author_email,
+        date: c.date,
+        message: c.message,
+        body: c.body,
+      }));
+    } catch (err) {
+      this.logger.warn(`Could not get commits for container ${this.id}: ${err.message}`);
+      return [];
+    }
+  }
+
+  async getCommitDetail(commitHash: string): Promise<CommitDetailDto> {
+    try {
+      // Get commit basic info
+      const log = await this.git.log({ from: commitHash, maxCount: 1 });
+      const commit = log.latest || {
+        hash: commitHash,
+        author_name: 'Unknown',
+        author_email: '',
+        date: new Date().toISOString(),
+        message: 'Commit details',
+        body: '',
+      };
+
+      // Check if root commit or has parent
+      let diffOutput = '';
+      try {
+        diffOutput = await this.git.raw(['show', '--name-status', '--oneline', commitHash]);
+      } catch (e) {
+        diffOutput = '';
+      }
+
+      // Parse changed files
+      const files: CommitFileDiffDto[] = [];
+      const lines = diffOutput.trim().split('\n');
+      
+      // Skip the first line if it's the oneline header
+      const fileLines = lines.length > 0 && lines[0].includes(commitHash.substring(0, 7)) ? lines.slice(1) : lines;
+
+      for (const line of fileLines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const parts = trimmed.split(/\s+/);
+        const statusLetter = parts[0];
+        const filePath = parts[1];
+
+        if (!filePath) continue;
+
+        let status: CommitFileDiffDto['status'] = 'modified';
+        if (statusLetter.startsWith('A')) status = 'added';
+        else if (statusLetter.startsWith('D')) status = 'deleted';
+        else if (statusLetter.startsWith('R')) status = 'renamed';
+        else if (statusLetter.startsWith('C')) status = 'copied';
+
+        // Extract individual file patch
+        let patch = '';
+        try {
+          patch = await this.git.raw(['show', `${commitHash}`, '--', filePath]);
+        } catch {
+          patch = '';
+        }
+
+        files.push({
+          path: this.sanitizeRelativePath(filePath),
+          status,
+          patch,
+        });
+      }
+
+      return {
+        hash: commit.hash,
+        shortHash: commit.hash.substring(0, 7),
+        author: commit.author_name,
+        authorEmail: commit.author_email,
+        date: commit.date,
+        message: commit.message,
+        body: commit.body,
+        filesChanged: files.length,
+        files,
+      };
+    } catch (err) {
+      this.logger.error(`Error retrieving commit detail for ${commitHash}:`, err);
+      throw new Error(`Failed to get commit detail: ${err.message}`);
+    }
+  }
+
+  async getFileHistory(filePath: string, limit = 50): Promise<CommitSummaryDto[]> {
+    const safePath = this.sanitizeRelativePath(filePath);
+    try {
+      const log = await this.git.log({ file: safePath, maxCount: limit });
+      return log.all.map((c) => ({
+        hash: c.hash,
+        shortHash: c.hash.substring(0, 7),
+        author: c.author_name,
+        authorEmail: c.author_email,
+        date: c.date,
+        message: c.message,
+        body: c.body,
+      }));
+    } catch (err) {
+      this.logger.warn(`Could not get file history for ${safePath}: ${err.message}`);
+      return [];
+    }
+  }
+
+  async getFileAtCommit(filePath: string, commitHash: string): Promise<FileVersionDto> {
+    const safePath = this.sanitizeRelativePath(filePath);
+    try {
+      const content = await this.git.show([`${commitHash}:${safePath}`]);
+      let author = 'Unknown';
+      let date = new Date().toISOString();
+      let message = '';
+
+      try {
+        const log = await this.git.log({ from: commitHash, maxCount: 1 });
+        if (log.latest) {
+          author = log.latest.author_name;
+          date = log.latest.date;
+          message = log.latest.message;
+        }
+      } catch {
+        // use defaults if log lookup fails
+      }
+
+      let metadata: ParsedNoteMetadataDto | undefined;
+      if (safePath.endsWith('.md')) {
+        metadata = NoteParserUtil.parse(content, path.basename(safePath, '.md'));
+      }
+
+      return {
+        commitHash,
+        shortHash: commitHash.substring(0, 7),
+        path: safePath,
+        content,
+        author,
+        date,
+        message,
+        metadata,
+      };
+    } catch (err) {
+      this.logger.error(`Error retrieving file "${safePath}" at commit "${commitHash}":`, err);
+      throw new Error(`Could not load revision: ${err.message}`);
+    }
+  }
+
+  async restoreFileVersion(
+    dto: RestoreFileVersionRequestDto
+  ): Promise<{ success: boolean; commit: string; message: string }> {
+    const safePath = this.sanitizeRelativePath(dto.path);
+    try {
+      const content = await this.git.show([`${dto.commitHash}:${safePath}`]);
+      const fullPath = path.join(this.rootPath, safePath);
+
+      await fs.mkdir(path.dirname(fullPath), { recursive: true });
+      await fs.writeFile(fullPath, content, 'utf-8');
+
+      await this.git.add(safePath);
+      const commitMsg = dto.message || `Time Machine: Revert "${safePath}" to commit ${dto.commitHash.substring(0, 7)}`;
+      const result = await this.git.commit(commitMsg);
+      const newCommit = result.commit || (await this.getHeadCommitHash());
+
+      return {
+        success: true,
+        commit: newCommit,
+        message: commitMsg,
+      };
+    } catch (err) {
+      this.logger.error(`Error reverting file "${safePath}" to commit "${dto.commitHash}":`, err);
+      throw new Error(`Failed to restore file revision: ${err.message}`);
+    }
+  }
 }
+
